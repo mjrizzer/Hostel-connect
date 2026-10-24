@@ -1,0 +1,58 @@
+{
+  "source": "MH MENU 25-26",
+  "sourceFiles": ["menu1.jpeg.jpeg", "menu2.jpeg.jpeg"],
+  "language": "en",
+  "verified": true,
+  "verificationNotes": [],
+  "acceptedInterpretations": [
+    "User authorized these best-effort readings on 2026-10-22; this is acceptance of the interpretation, not independent confirmation of indistinct print.",
+    "Wednesday lunch: the photograph appears to list Rasam twice, once after Curd and again after Beetroot Thoran. Confirm whether this is a printing duplication; retained once in the draft.",
+    "Thursday lunch: confirm the grouping of 'Beef Roast / Theeyal', 'Upperi', and 'Long Beans, Raw Banana and Yam Mezhukkupuratti'. The food names are readable, but punctuation and grouping are unclear.",
+    "Tuesday lunch: confirm whether the alternative is Fish Curry / Egg Thoran (the word Thoran wraps onto the next line).",
+    "Slashes are retained as alternatives exactly where visible; they must not be interpreted as all dishes being served together."
+  ],
+  "days": {
+    "Monday": {
+      "breakfast": ["Poori", "Masala", "Upma", "Small Banana", "Tea / Bru Coffee", "Black Tea"],
+      "lunch": ["Rice", "Fish Fry", "Potato Mezhukkupuratti", "Koottu Curry / Erissery", "Sambar", "Rasam", "Pickle", "Pappadam"],
+      "snacks": ["Chicken Puffs / Egg Puffs", "Tea / Black Tea"],
+      "dinner": ["Chicken Biryani", "Paneer Butter Masala", "Salad", "Lemon and Dates Mixed Pickle", "Pappadam"]
+    },
+    "Tuesday": {
+      "breakfast": ["Idli / Upma", "Small Banana", "Sambar", "Chutney", "Tea / Bru Coffee", "Black Tea"],
+      "lunch": ["Rice", "Fish Curry / Egg Thoran", "Long Bean Thoran", "Pineapple Pachadi", "Rasam", "Pickle", "Pappadam"],
+      "snacks": ["Banana Boli", "Tea / Black Tea"],
+      "dinner": ["Appam / Puttu", "Chicken Curry / Chana Masala", "Black Coffee"]
+    },
+    "Wednesday": {
+      "breakfast": ["Dosa", "Sambar", "Chutney", "Tea / Bru Coffee", "Black Tea"],
+      "lunch": ["Rice", "Fish Fry", "Chinese Potato (Koorka)", "Curd", "Rasam", "Beetroot Thoran", "Pickle / Pappadam"],
+      "snacks": ["Chicken Roll / Sandwich", "Bru Coffee", "Black Tea"],
+      "dinner": ["Porotta / Chapati", "Beef Fry", "Paneer Butter Masala", "Black Coffee"]
+    },
+    "Thursday": {
+      "breakfast": ["Puttu", "Chickpeas / Green Gram", "Small Banana", "Tea / Black Tea"],
+      "lunch": ["Rice", "Beef Roast / Theeyal", "Upperi", "Long Beans, Raw Banana and Yam Mezhukkupuratti", "Rasam", "Pickle / Pappadam"],
+      "snacks": ["Uzhunnu Vada", "Bru Coffee", "Black Tea"],
+      "dinner": ["Fried Rice, Chilli Chicken, Gobi Manchurian / Pathiri and Chicken Masala / Vegetable Stew"]
+    },
+    "Friday": {
+      "breakfast": ["Appam", "Kadala Curry / Vegetable Stew", "Boiled Egg", "Tea / Bru Coffee / Black Tea"],
+      "lunch": ["Rice", "Avial", "Sambar", "Soya Chunks Dry Roast", "Ginger Curry", "Rasam", "Pickle / Pappadam", "Payasam"],
+      "snacks": ["Parippu Vada", "Ela Ada", "Tea / Bru Coffee", "Black Tea"],
+      "dinner": ["Rice", "Fish Roast", "Sambar", "Thoran", "Rasam", "Pickle / Pappadam"]
+    },
+    "Saturday": {
+      "breakfast": ["Idiyappam", "Vegetable Kurma with Roasted and Ground Coconut", "Tea / Black Tea"],
+      "lunch": ["Rice", "Carrot and Mixed Beans Thoran / Ivy Gourd Thoran", "Moru Curry", "Chicken Roast / Soya Bean", "Rasam", "Pickle / Pappadam"],
+      "snacks": ["Cake", "Tea", "Black Tea"],
+      "dinner": ["Rice Porridge (Kanji)", "Payar Thoran (Bean Stir-fry)", "Red Chilli Chutney", "Pickle", "Pappadam"]
+    },
+    "Sunday": {
+      "breakfast": ["Masala Dosa", "Sambar", "Chutney", "Bru Coffee / Black Tea"],
+      "lunch": ["Ghee Rice", "Chicken Curry / Gobi Manchurian", "Pickle", "Pappadam"],
+      "snacks": ["Beef Cutlet / Vegetable Cutlet", "Tea / Bru Coffee", "Black Tea"],
+      "dinner": ["Rice", "Fish Roast", "Moru Curry", "Cowpea Thoran", "Rasam", "Pickle"]
+    }
+  }
+}
