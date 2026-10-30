@@ -97,7 +97,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '16 machines · ${list.where((m) => m.status == Availability.available).length} available · ${list.where((m) => m.status == Availability.inUse).length} in use',
+                    '${list.length} machines · ${list.where((m) => m.status == Availability.available).length} available · ${list.where((m) => m.status == Availability.inUse).length} in use',
                   ),
                   if (s.metadata.isFromCache)
                     const Text('Offline or reconnecting · Last known status'),

@@ -10,9 +10,15 @@ async function createOnly(path,data) { await db.runTransaction(async t=>{ const 
 async function main(){
   if (!process.env.GCLOUD_PROJECT) throw Error('Set GCLOUD_PROJECT explicitly.');
   for(const b of buildings) await createOnly(`buildings/${b.id}`,{buildingId:b.id,name:b.name,floorCount:b.floors});
+  await db.runTransaction(async t=>{
+    const old=db.doc('machines/MB-F4-WM1'), snapshot=await t.get(old);
+    if(snapshot.exists && (snapshot.get('status')==='inUse' || snapshot.get('activeSessionId'))) throw Error('Resolve the active obsolete MB Floor 4 session before migrating inventory.');
+    t.update(db.doc('buildings/MB'),{floorCount:3});
+    if(snapshot.exists)t.delete(old);
+  });
   for(const m of machines) await createOnly(`machines/${m.id}`,{...m,status:'available',activeSessionId:null,startedAt:null,updatedAt:Timestamp.now()});
   for(const e of equipment) await createOnly(`sportsEquipment/${e.id}`,{...e,status:'available',activeSessionId:null,startedAt:null,updatedAt:Timestamp.now()});
-  console.log('Inventory ready: 5 buildings, 16 machines, 3 sports facilities. Existing occupancy preserved.');
+  console.log('Inventory ready: 5 buildings, 15 machines, 3 sports facilities. Existing occupancy preserved.');
   const menu=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../../assets/menu/weekly-menu.json'),'utf8'));
   if (!menu.verified || menu.verificationNotes.length) { console.log('Menu NOT imported: resolve documented photograph ambiguities and verify the source first.'); return; }
   if(Object.keys(menu.days).length!==7) throw Error('Exactly seven days required');

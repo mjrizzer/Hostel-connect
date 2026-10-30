@@ -8,7 +8,7 @@ Download the APK from [GitHub Releases](https://github.com/mjrizzer/Hostel-conne
 
 This development build provides live reservations without scheduled reminders. See [free-plan capabilities and limitations](docs/FREE_PLAN.md) before sharing it. The administrator dashboard requires the original Cloud Functions backend.
 
-The latest update adds the myHostel name and icon, user/message reports with a six-account removal threshold, and prepared Firebase Cloud Messaging integration. Automatic Community push delivery remains pending on the free plan. See [Community reporting and notifications](docs/COMMUNITY.md).
+The latest update adds the myHostel name, restores the previous app icon, corrects MB to three floors (15 washing machines overall), adds user/message reports with a six-account removal threshold, and prepares Firebase Cloud Messaging integration. Automatic Community push delivery remains pending on the free plan. See [Community reporting and notifications](docs/COMMUNITY.md).
 
 ## Architecture
 

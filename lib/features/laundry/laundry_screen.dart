@@ -88,7 +88,11 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen> {
                 Wrap(
                   spacing: 10,
                   children: List.generate(
-                    ['DJ', 'MB'].contains(building) ? 4 : 2,
+                    building == 'DJ'
+                        ? 4
+                        : building == 'MB'
+                        ? 3
+                        : 2,
                     (i) => ChoiceChip(
                       label: Text('Floor ${i + 1}'),
                       selected: floor == i + 1,

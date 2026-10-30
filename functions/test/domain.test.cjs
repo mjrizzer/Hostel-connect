@@ -2,8 +2,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const d=require('../lib/domain');
 test('exact hostel inventory and floor distribution',()=>{
- assert.equal(d.buildings.length,5); assert.equal(d.machines.length,16); assert.equal(new Set(d.machines.map(x=>x.id)).size,16);
- assert.deepEqual(d.buildings.map(b=>d.machines.filter(m=>m.buildingId===b.id).length),[2,2,4,4,4]);
+ assert.equal(d.buildings.length,5); assert.equal(d.machines.length,15); assert.equal(new Set(d.machines.map(x=>x.id)).size,15);
+ assert.deepEqual(d.buildings.map(b=>d.machines.filter(m=>m.buildingId===b.id).length),[2,2,4,4,3]);
+ assert.equal(d.machines.some(m=>m.id==='MB-F4-WM1'),false);
  for(const b of d.buildings) for(let floor=1;floor<=b.floors;floor++) assert.equal(d.machines.filter(m=>m.buildingId===b.id&&m.floorNumber===floor).length,b.perFloor);
  assert.deepEqual(d.equipment.map(x=>x.id),['DJ-TT1','KENNEDY-TT1','KENNEDY-CARROM1']);
 });

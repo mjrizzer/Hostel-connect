@@ -4,7 +4,7 @@ export const buildings = [
   {id:'HS2', name:'HS2', floors:2, perFloor:1},
   {id:'KENNEDY', name:'Kennedy', floors:2, perFloor:2},
   {id:'DJ', name:'DJ', floors:4, perFloor:1},
-  {id:'MB', name:'MB', floors:4, perFloor:1},
+  {id:'MB', name:'MB', floors:3, perFloor:1},
 ];
 export const machines = buildings.flatMap(b => Array.from({length:b.floors}, (_,f) =>
   Array.from({length:b.perFloor}, (_,m) => ({id:`${b.id}-F${f+1}-WM${m+1}`,buildingId:b.id,floorNumber:f+1,machineNumber:m+1}))).flat());

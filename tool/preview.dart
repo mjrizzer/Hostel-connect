@@ -48,7 +48,7 @@ Future<void> main() async {
     'HS2': [2, 1],
     'KENNEDY': [2, 2],
     'DJ': [4, 1],
-    'MB': [4, 1],
+    'MB': [3, 1],
   }.entries) {
     for (var floor = 1; floor <= entry.value[0]; floor++) {
       for (var n = 1; n <= entry.value[1]; n++) {
