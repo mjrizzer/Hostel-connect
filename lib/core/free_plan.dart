@@ -43,6 +43,44 @@ Future<Map<String, dynamic>> freePlanCall(
     });
     return {'ok': true};
   }
+  if (action == 'communityReport') {
+    final messageId = p['messageId'] as String;
+    final type = p['type'] as String;
+    await db.runTransaction((t) async {
+      final message = await t.get(db.doc('chatMessages/$messageId'));
+      if (!message.exists) unavailable('Message no longer exists.');
+      final target = type == 'user'
+          ? 'u_${message.get('senderKey')}'
+          : 'm_$messageId';
+      final report = db.doc('communityReports/${target}_$uid');
+      final counter = db.doc('communityModeration/$target');
+      final previous = await t.get(report);
+      final count = await t.get(counter);
+      final rate = db.doc('freeRateLimits/${uid}_reports');
+      await t.get(rate);
+      if (previous.exists) {
+        unavailable('You have already reported this target.');
+      }
+      t.set(report, {
+        'target': target,
+        'messageId': messageId,
+        'type': type,
+        'reporterId': uid,
+        'reason': p['reason'],
+        'description': p['description'],
+        'createdAt': stamp,
+      });
+      t.set(counter, {'count': (count.data()?['count'] as int? ?? 0) + 1});
+      if (type == 'message' && (count.data()?['count'] as int? ?? 0) == 5) {
+        t.update(db.doc('chatMessages/$messageId'), {
+          'content': 'Message removed after community reports',
+          'moderated': true,
+        });
+      }
+      t.set(rate, {'at': stamp, 'target': 'communityReports/${target}_$uid'});
+    });
+    return {'ok': true};
+  }
   if (action == 'start' || action == 'finish') {
     final laundry = p['kind'] == 'laundry';
     final resources = laundry ? 'machines' : 'sportsEquipment';

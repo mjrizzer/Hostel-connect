@@ -1,0 +1,15 @@
+# myHostel Community reporting and FCM
+
+The free-plan app supports reporting either a message or its author through Message actions. Each authenticated account can report a target once. Reports are private; public counters contain only a count. Reports must use a valid reason and are limited to one per minute across reports and suggestions.
+
+At six distinct account reports, message text is atomically replaced with a removal notice. Six user reports suspend posting and hide that account's messages in the current client. Firestore rules enforce the posting restriction, including for older clients. Other hostel features remain accessible. Administrators can review private `communityReports` and restore counters/content through trusted administrative tools; no student can reset counters. The free-plan admin dashboard remains unimplemented. Anonymous accounts can be recreated, so these are distinct accounts, not verified distinct people; coordinated false reports remain possible.
+
+Community notification preferences are opt-in. Firebase Cloud Messaging handles transport and Android uses a dedicated high-importance `community_messages` channel, a monochrome notification icon, message-style foreground display, and navigation to Community when tapped. The backend excludes the sender's subscribed installation. Users can disable the preference with the same Community notifications button. Android permission, channel settings and connectivity affect delivery.
+
+**Current free-plan deployment: automatic push delivery is pending.** FCM integration is prepared, but no server function is deployed because the project stays on Spark. This is stated in the permission explanation. There is no client-side substitute claiming background delivery.
+
+After the project owner enables Blaze, deploy only the push trigger with `firebase deploy --only functions:communityMessagePush`. It is exported from `functions/src/community-push.ts`. Keep the free-plan Firestore rules deployed; deploying the original rules would break free-plan client writes. The trigger sends only new Community messages and skips targets already removed at send time. A private per-message claim prevents duplicate send attempts; uncertain FCM handoffs are not retried, so some notifications may be lost. Games never generate notifications. Existing old messages are not replayed.
+
+Topic notifications are appropriate only for this public Community: topic membership is not a membership authorization boundary, and local mutes do not filter background topic deliveries. Private chats would need recipient-specific tokens and trusted membership checks. The current test APK still uses debug App Check and debug signing; configure production integrity and signing before a general rollout.
+
+Validation: Flutter analysis and widget/unit tests; TypeScript build; emulator tests cover six unique reports, duplicate/self-report denial, forged counters, private reports, atomic message redaction, server posting restriction, and continued reservation access.

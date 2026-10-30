@@ -45,7 +45,7 @@ Future<void> main() async {
             child: Padding(
               padding: EdgeInsets.all(32),
               child: Text(
-                'Hostel Connect could not connect to its configured services. Please restart the app or contact your hostel administrator.',
+                'myHostel could not connect to its configured services. Please restart the app or contact your hostel administrator.',
                 textAlign: TextAlign.center,
               ),
             ),

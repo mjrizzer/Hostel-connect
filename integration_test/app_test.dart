@@ -28,6 +28,6 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       expect(tester.takeException(), isNull);
     }
-    expect(find.text('Hostel Connect'), findsOneWidget);
+    expect(find.text('myHostel'), findsOneWidget);
   });
 }

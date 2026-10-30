@@ -1,4 +1,5 @@
 import {initializeApp} from 'firebase-admin/app';
+export {communityMessagePush} from './community-push';
 import {getFirestore, Timestamp, Transaction} from 'firebase-admin/firestore';
 import {getFunctions} from 'firebase-admin/functions';
 import {getMessaging} from 'firebase-admin/messaging';

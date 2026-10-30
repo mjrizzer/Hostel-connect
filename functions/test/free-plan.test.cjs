@@ -25,7 +25,40 @@ async function finish(uid,id,sid,kind='laundry'){
  b.update(doc(db,kind==='laundry'?'laundrySessions':'sportsSessions',sid),{status:'completed',completedAt:serverTimestamp()});
  b.delete(doc(db,kind==='laundry'?'activeLaundry':'activeSports',uid));b.delete(doc(db,'resourceClaims',id));return b.commit();
 }
+async function communityReport(uid,target,messageId,type='message') {
+ const db=client(uid),b=writeBatch(db);
+ const counter=doc(db,'communityModeration',target);
+ const count=(await getDoc(counter)).data()?.count??0;
+ b.set(doc(db,'communityReports',target+'_'+uid),{target,messageId,type,reporterId:uid,reason:'Spam',description:'Test',createdAt:serverTimestamp()});
+ b.set(counter,{count:count+1});
+ if(type==='message' && count===5)b.update(doc(db,'chatMessages',messageId),{content:'Message removed after community reports',moderated:true});
+ b.set(doc(db,'freeRateLimits',uid+'_reports'),{at:serverTimestamp(),target:'communityReports/'+target+'_'+uid});
+ return b.commit();
+}
 test('free-plan authorization and atomic reservations',{skip:!enabled},async t=>{
+ await t.test('six unique reports hide a message, duplicates and forged counters fail',async()=>{
+  await fixture();await profile('author','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');await message('author','reported','Hello');
+  for(let i=1;i<=6;i++){
+   const uid='reporter'+i;await profile(uid,`${String(i).repeat(8)}-bbbb-bbbb-bbbb-bbbbbbbbbbbb`);
+   await assertSucceeds(communityReport(uid,'m_reported','reported'));
+   assert.equal((await getDoc(doc(client(uid),'communityModeration','m_reported'))).data().count,i);
+  }
+  await assertFails(communityReport('reporter1','m_reported','reported'));
+  assert.equal((await getDoc(doc(client('author'),'chatMessages','reported'))).data().content,'Message removed after community reports');
+  await assertFails(setDoc(doc(client('reporter1'),'communityModeration','m_forged'),{count:6}));
+  await assertFails(getDoc(doc(client('author'),'communityReports','m_reported_reporter1')));
+ });
+ await t.test('six distinct user reports block posting but preserve resource access',async()=>{
+  await fixture();const alias='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';await profile('author',alias);await message('author','reported','Hello');
+  await assertFails(communityReport('author','u_'+alias,'reported','user'));
+  for(let i=1;i<=6;i++){
+   const uid='reporter'+i;await profile(uid,`${String(i).repeat(8)}-bbbb-bbbb-bbbb-bbbbbbbbbbbb`);
+   await assertSucceeds(communityReport(uid,'u_'+alias,'reported','user'));
+  }
+  await env.withSecurityRulesDisabled(async c=>{await setDoc(doc(c.firestore(),'freeRateLimits','author_chat'),{at:Timestamp.fromMillis(1),content:'Old',target:'old'});});
+  await assertFails(message('author','blocked','Different text'));
+  await assertSucceeds(start('author','HS1-F1-WM1','wash'));
+ });
  await t.test('profile creation is valid and cannot steal a public alias',async()=>{await fixture();await assertSucceeds(profile('alice','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));await assertFails(profile('bob','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));});
  await t.test('chat works with rules-enforced rate and author checks',async()=>{await fixture();await profile('alice','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');await assertSucceeds(message('alice','msg1','Hello hostel'));await assertFails(message('alice','msg2','Too soon'));await assertFails(updateDoc(doc(client('bob'),'chatMessages','msg1'),{content:'Message deleted',deleted:true}));await assertSucceeds(updateDoc(doc(client('alice'),'chatMessages','msg1'),{content:'Message deleted',deleted:true}));});
  await t.test('race yields one reservation and ownership survives a fresh client',async()=>{await fixture();const results=await Promise.allSettled([start('alice','HS1-F1-WM1','a'),start('bob','HS1-F1-WM1','b')]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);const uid=results[0].status==='fulfilled'?'alice':'bob',sid=uid==='alice'?'a':'b';assert.equal((await getDoc(doc(client(uid),'laundrySessions',sid))).data().status,'active');await assertSucceeds(finish(uid,'HS1-F1-WM1',sid));});

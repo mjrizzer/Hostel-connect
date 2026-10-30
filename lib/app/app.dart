@@ -66,7 +66,7 @@ class HostelApp extends ConsumerWidget {
   const HostelApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
-    title: 'Hostel Connect',
+    title: 'myHostel',
     debugShowCheckedModeBanner: false,
     theme: appTheme(Brightness.light),
     darkTheme: appTheme(Brightness.dark),
@@ -85,7 +85,7 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Hostel Connect',
+          'myHostel',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
@@ -149,7 +149,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       await repo.initialize();
       if (!mounted) return;
       context.go('/');
-      if (!repo.supportsReminders) return;
       try {
         await Notifications.instance.initialize(
           repo,
@@ -180,7 +179,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Welcome to\nHostel Connect',
+                'Welcome to\nmyHostel',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineLarge,
               ),

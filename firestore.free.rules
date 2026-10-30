@@ -123,7 +123,44 @@ service cloud.firestore {
       && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 20
       && request.resource.data.reason is string && request.resource.data.reason.size() <= 500 && reportRate('menuSuggestions/'+id);
   }
-  function canChat() { return !exists(/databases/$(database)/documents/restrictions/$(me())) || get(/databases/$(database)/documents/restrictions/$(me())).data.until <= request.time; }
+  function communityRemoved(target) {
+    return exists(/databases/$(database)/documents/communityModeration/$(target))
+      && get(/databases/$(database)/documents/communityModeration/$(target)).data.count >= 6;
+  }
+  function priorCount(target) {
+    let p = /databases/$(database)/documents/communityModeration/$(target);
+    return exists(p) ? get(p).data.count : 0;
+  }
+  match /communityModeration/{target} {
+    allow read: if signed();
+    allow create,update: if signed()
+      && request.resource.data.keys().hasOnly(['count'])
+      && request.resource.data.count == priorCount(target)+1
+      && (request.resource.data.count != 6 || !target.matches('m_.*')
+        || getAfter(/databases/$(database)/documents/chatMessages/$(target.replace('^m_',''))).data.moderated == true)
+      && !exists(/databases/$(database)/documents/communityReports/$(target+'_'+me()))
+      && getAfter(/databases/$(database)/documents/communityReports/$(target+'_'+me())).data.createdAt == request.time
+      && getAfter(/databases/$(database)/documents/communityReports/$(target+'_'+me())).data.target == target;
+  }
+  match /communityReports/{id} {
+    allow read: if signed() && (id.matches('.*_'+me()) || admin());
+    allow create: if signed()
+      && request.resource.data.keys().hasOnly(['target','messageId','type','reporterId','reason','description','createdAt'])
+      && request.resource.data.reporterId == me()
+      && request.resource.data.createdAt == request.time
+      && request.resource.data.type in ['user','message']
+      && exists(/databases/$(database)/documents/chatMessages/$(request.resource.data.messageId))
+      && get(/databases/$(database)/documents/chatMessages/$(request.resource.data.messageId)).data.senderKey != get(/databases/$(database)/documents/users/$(me())).data.publicId
+      && request.resource.data.target == (request.resource.data.type == 'user'
+        ? 'u_'+get(/databases/$(database)/documents/chatMessages/$(request.resource.data.messageId)).data.senderKey
+        : 'm_'+request.resource.data.messageId)
+      && id == request.resource.data.target+'_'+me()
+      && request.resource.data.reason in ['Abusive language','Vulgar content','Harassment','Spam','Threats','Other']
+      && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+      && getAfter(/databases/$(database)/documents/communityModeration/$(request.resource.data.target)).data.count == priorCount(request.resource.data.target)+1
+      && reportRate('communityReports/'+id);
+  }
+  function canChat() { return !communityRemoved('u_'+get(/databases/$(database)/documents/users/$(me())).data.publicId) && !exists(/databases/$(database)/documents/restrictions/$(me())) || get(/databases/$(database)/documents/restrictions/$(me())).data.until <= request.time; }
   function chatRate(id,content) {
     let p = /databases/$(database)/documents/freeRateLimits/$(me()+'_chat');
     return (!exists(p) || (request.time >= get(p).data.at + duration.value(5,'s') && (content != get(p).data.content || request.time >= get(p).data.at + duration.value(60,'s'))))
@@ -131,6 +168,12 @@ service cloud.firestore {
   }
   match /chatMessages/{id} {
     allow read: if signed();
+    allow update: if signed() && priorCount('m_'+id) == 5
+      && getAfter(/databases/$(database)/documents/communityModeration/$('m_'+id)).data.count == 6
+      && !exists(/databases/$(database)/documents/communityReports/$('m_'+id+'_'+me()))
+      && getAfter(/databases/$(database)/documents/communityReports/$('m_'+id+'_'+me())).data.createdAt == request.time
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content','moderated'])
+      && request.resource.data.content == 'Message removed after community reports' && request.resource.data.moderated == true;
     allow create: if signed() && canChat() && request.resource.data.keys().hasOnly(['content','displayName','senderKey','timestamp','replyTo','deleted','moderated'])
       && request.resource.data.content is string && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 2000
       && !request.resource.data.content.lower().matches('(?s).*(fuck|cunt|nigger).*')
@@ -165,7 +208,7 @@ service cloud.firestore {
         ? getAfter(/databases/$(database)/documents/chatMessages/$(request.resource.data.target)).data.timestamp == request.time
           && getAfter(/databases/$(database)/documents/chatMessages/$(request.resource.data.target)).data.content == request.resource.data.content
           && getAfter(/databases/$(database)/documents/chatAuthors/$(request.resource.data.target)).data.senderId == me()
-        : request.resource.data.target.matches('(machineReports|sportsReports|messageReports|menuSuggestions)/[a-zA-Z0-9_-]+'))
+        : request.resource.data.target.matches('(machineReports|sportsReports|messageReports|menuSuggestions|communityReports)/[a-zA-Z0-9_-]+'))
       && (!exists(/databases/$(database)/documents/freeRateLimits/$(id)) || request.time >= resource.data.at + duration.value(id == me()+'_chat' ? 5 : 60,'s'));
   }
   match /{document=**} { allow write: if false; }

@@ -8,8 +8,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/models.dart';
+import '../notifications/notifications.dart';
 import '../../core/repository.dart';
 import '../../core/widgets.dart';
+
+final moderationProvider = StreamProvider<Map<String, int>>(
+  (ref) => ref
+      .watch(repositoryProvider)
+      .db
+      .collection('communityModeration')
+      .snapshots()
+      .map((s) => {for (final d in s.docs) d.id: d.get('count') as int}),
+);
 
 class CommunityScreen extends ConsumerStatefulWidget {
   const CommunityScreen({super.key});
@@ -172,7 +182,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               'Reply',
               'Copy',
               if (own) 'Delete',
-              if (!own) 'Report',
+              if (!own) 'Report message',
+              if (!own) 'Report user',
               if (!own) 'Mute locally',
             ])
               ListTile(title: Text(a), onTap: () => Navigator.pop(c, a)),
@@ -201,11 +212,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           final p = await SharedPreferences.getInstance();
           setState(() => blocked.add(m.senderKey));
           await p.setStringList('blocked', blocked.toList());
-        case 'Report':
+        case 'Report message':
+        case 'Report user':
           final reason = await showDialog<String>(
             context: context,
             builder: (c) => SimpleDialog(
-              title: const Text('Report message'),
+              title: Text(action),
               children:
                   [
                         'Abusive language',
@@ -227,12 +239,18 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           if (reason == null || !mounted) return;
           final description = await input(context, 'Optional explanation');
           if (description == null) return;
-          await ref.read(repositoryProvider).call('reportMessage', {
+          await ref.read(repositoryProvider).call('communityReport', {
+            'type': action == 'Report user' ? 'user' : 'message',
             'messageId': m.id,
             'reason': reason,
             'description': description,
           });
-          if (mounted) notice(context, 'Report sent privately to moderators.');
+          if (mounted) {
+            notice(
+              context,
+              'Report submitted. Six different accounts trigger Community removal.',
+            );
+          }
       }
     } catch (e) {
       if (mounted) notice(context, errorText(e));
@@ -242,8 +260,18 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider).asData?.value;
+    final moderation = ref.watch(moderationProvider);
+    final counts = moderation.asData?.value ?? <String, int>{};
+    final restricted = (counts['u_${profile?.publicId}'] ?? 0) >= 6;
     final list =
-        messages.values.where((m) => !blocked.contains(m.senderKey)).toList()
+        messages.values
+            .where(
+              (m) =>
+                  !blocked.contains(m.senderKey) &&
+                  (counts['m_${m.id}'] ?? 0) < 6 &&
+                  (counts['u_${m.senderKey}'] ?? 0) < 6,
+            )
+            .toList()
           ..sort((a, b) => b.time.compareTo(a.time));
     return Column(
       children: [
@@ -270,9 +298,28 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           ),
         ),
         if (error != null) Text(error!),
+        if (moderation.hasError)
+          const Text(
+            'Community moderation is unavailable. Please retry later.',
+          ),
+        if (restricted)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text(
+              'Community posting is suspended after six reports from different accounts. Contact your hostel administrator for review.',
+            ),
+          ),
+        TextButton.icon(
+          onPressed: () =>
+              Notifications.instance.offerCommunityPermission(context),
+          icon: const Icon(Icons.notifications_outlined),
+          label: const Text('Community notifications'),
+        ),
         if (loading) const LinearProgressIndicator(),
         Expanded(
-          child: list.isEmpty && !loading
+          child: (moderation.isLoading || moderation.hasError)
+              ? const Center(child: CircularProgressIndicator())
+              : list.isEmpty && !loading
               ? const Center(
                   child: Text('Start a conversation with your hostel.'),
                 )
@@ -380,7 +427,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 Expanded(
                   child: TextField(
                     controller: text,
-                    enabled: !sending,
+                    enabled: !sending && !restricted,
                     minLines: 1,
                     maxLines: 5,
                     maxLength: 2000,
@@ -399,7 +446,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 const SizedBox(width: 8),
                 IconButton.filled(
                   tooltip: sending ? 'Sending' : 'Send message',
-                  onPressed: sending ? null : _send,
+                  onPressed: sending || restricted ? null : _send,
                   icon: sending
                       ? const SizedBox.square(
                           dimension: 22,

@@ -209,7 +209,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           ),
         ),
         const ListTile(
-          title: Text('Hostel Connect'),
+          title: Text('myHostel'),
           subtitle: Text('Version 1.0.0 · Made for hostel life'),
         ),
       ],

@@ -1,4 +1,4 @@
-# Hostel Connect
+# myHostel
 
 Flutter Android application and Firebase backend for HS1, HS2, Kennedy, DJ and MB.
 
@@ -7,6 +7,8 @@ Flutter Android application and Firebase backend for HS1, HS2, Kennedy, DJ and M
 Download the APK from [GitHub Releases](https://github.com/mjrizzer/Hostel-connect/releases). The current free-plan test build supports Android ARM64 devices, including the Galaxy S23, and requires Android 7.0 or later. Enable installation from your browser when Android asks, then open Hostel Connect to create an anonymous session.
 
 This development build provides live reservations without scheduled reminders. See [free-plan capabilities and limitations](docs/FREE_PLAN.md) before sharing it. The administrator dashboard requires the original Cloud Functions backend.
+
+The latest update adds the myHostel name and icon, user/message reports with a six-account removal threshold, and prepared Firebase Cloud Messaging integration. Automatic Community push delivery remains pending on the free plan. See [Community reporting and notifications](docs/COMMUNITY.md).
 
 ## Architecture
 
