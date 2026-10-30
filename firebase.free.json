@@ -1,0 +1,4 @@
+{
+  "firestore": {"rules": "firestore.free.rules", "indexes": "firestore.indexes.json"},
+  "emulators": {"firestore": {"port": 8082}, "ui": {"enabled": false}, "singleProjectMode": true}
+}

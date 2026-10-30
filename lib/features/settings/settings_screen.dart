@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/repository.dart';
+import '../../core/free_plan.dart';
 import '../../core/widgets.dart';
 import '../notifications/notifications.dart';
 
@@ -58,6 +59,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   Future<void> _refresh() async {
+    if (freePlan) return;
     final p = await FirebaseMessaging.instance.getNotificationSettings();
     if (mounted) setState(() => permission = p);
   }
@@ -90,20 +92,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     }
                   },
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Laundry reminders'),
-                  value: p.reminders,
-                  onChanged: (value) async {
-                    try {
-                      await ref.read(repositoryProvider).call('profile', {
-                        'reminders': value,
-                      });
-                    } catch (e) {
-                      if (context.mounted) notice(context, errorText(e));
-                    }
-                  },
-                ),
+                if (!freePlan)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Laundry reminders'),
+                    value: p.reminders,
+                    onChanged: (value) async {
+                      try {
+                        await ref.read(repositoryProvider).call('profile', {
+                          'reminders': value,
+                        });
+                      } catch (e) {
+                        if (context.mounted) notice(context, errorText(e));
+                      }
+                    },
+                  ),
               ],
             ),
           ),
@@ -135,36 +138,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             ],
           ),
         ),
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notification permission: ${permission?.authorizationStatus.name ?? 'checking'}',
-              ),
-              ActionButton(
-                label: 'Enable notifications',
-                onPressed: () async {
-                  await Notifications.instance.offerPermission(
-                    context,
-                    ref.read(repositoryProvider),
-                    force: true,
-                  );
-                  await _refresh();
-                },
-              ),
-              TextButton(
-                onPressed: () => AppSettings.openAppSettings(
-                  type: AppSettingsType.notification,
+        if (freePlan)
+          const Panel(
+            child: Text(
+              'Free-plan version: live reservations are enabled. Washing and drying reminders are not available.',
+            ),
+          )
+        else
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notification permission: ${permission?.authorizationStatus.name ?? 'checking'}',
                 ),
-                child: const Text('Open notification settings'),
-              ),
-              const Text(
-                'Battery restrictions, network conditions, permissions and push delivery can delay or prevent reminders. A reminder never frees a machine automatically.',
-              ),
-            ],
+                ActionButton(
+                  label: 'Enable notifications',
+                  onPressed: () async {
+                    await Notifications.instance.offerPermission(
+                      context,
+                      ref.read(repositoryProvider),
+                      force: true,
+                    );
+                    await _refresh();
+                  },
+                ),
+                TextButton(
+                  onPressed: () => AppSettings.openAppSettings(
+                    type: AppSettingsType.notification,
+                  ),
+                  child: const Text('Open notification settings'),
+                ),
+                const Text(
+                  'Battery restrictions, network conditions, permissions and push delivery can delay or prevent reminders. A reminder never frees a machine automatically.',
+                ),
+              ],
+            ),
           ),
-        ),
         const Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,6 +2,12 @@
 
 Flutter Android application and Firebase backend for HS1, HS2, Kennedy, DJ and MB.
 
+## Android download
+
+Download the APK from [GitHub Releases](https://github.com/mjrizzer/Hostel-connect/releases). The current free-plan test build supports Android ARM64 devices, including the Galaxy S23, and requires Android 7.0 or later. Enable installation from your browser when Android asks, then open Hostel Connect to create an anonymous session.
+
+This development build provides live reservations without scheduled reminders. See [free-plan capabilities and limitations](docs/FREE_PLAN.md) before sharing it. The administrator dashboard requires the original Cloud Functions backend.
+
 ## Architecture
 
 - Flutter / Riverpod / GoRouter; feature screens share typed repositories and snapshot providers.
@@ -25,7 +31,7 @@ npm --prefix admin ci
 npm --prefix admin run build
 ```
 
-Firebase project configuration, App Check registration, Cloud Tasks IAM, Android SDK, and release signing must be provisioned before deployment. This repository contains actual Firebase operations, not a demo data mode. No live deployment or APK is included.
+Firebase project configuration, App Check registration, Cloud Tasks IAM, Android SDK, and release signing must be provisioned for the original backend deployment. The free-plan edition has separate configuration and security rules documented above. APK downloads are distributed through GitHub Releases rather than tracked in the source tree.
 
 ## Repository privacy
 

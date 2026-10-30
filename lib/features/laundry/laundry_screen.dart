@@ -187,7 +187,9 @@ class ResourceCard extends ConsumerWidget {
                       )) {
                         return;
                       }
-                      if (kind == 'laundry' && context.mounted) {
+                      if (kind == 'laundry' &&
+                          context.mounted &&
+                          ref.read(repositoryProvider).supportsReminders) {
                         await Notifications.instance.offerPermission(
                           context,
                           ref.read(repositoryProvider),
@@ -234,7 +236,9 @@ Future<void> finishSession(
     'kind': kind,
     'sessionId': session.id,
   });
-  if (kind == 'laundry' && context.mounted) {
+  if (kind == 'laundry' &&
+      context.mounted &&
+      ref.read(repositoryProvider).supportsReminders) {
     final drying = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -269,6 +273,7 @@ class DryingDecisionCards extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(repositoryProvider);
+    if (!repo.supportsReminders) return const SizedBox.shrink();
     return StreamBuilder(
       stream: repo.db
           .collection('laundrySessions')
@@ -404,6 +409,7 @@ class DryingCards extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(repositoryProvider);
+    if (!repo.supportsReminders) return const SizedBox.shrink();
     return StreamBuilder(
       stream: repo.db
           .collection('dryingReminders')

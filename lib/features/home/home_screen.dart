@@ -56,7 +56,11 @@ class HomeScreen extends ConsumerWidget {
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
                     onPressed: () => context.push('/settings'),
                     icon: const Icon(Icons.notifications_outlined),
-                    label: const Text('Reminder settings'),
+                    label: Text(
+                      ref.watch(repositoryProvider).supportsReminders
+                          ? 'Reminder settings'
+                          : 'Settings',
+                    ),
                   ),
                   TextButton.icon(
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
@@ -70,6 +74,12 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (!ref.watch(repositoryProvider).supportsReminders)
+          const Panel(
+            child: Text(
+              'Live reservations · Free-plan edition\nScheduled laundry reminders are not available.',
+            ),
+          ),
         const ActiveSessions(kind: 'laundry'),
         const DryingDecisionCards(),
         const DryingCards(),

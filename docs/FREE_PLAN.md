@@ -1,0 +1,13 @@
+# Free-plan Android edition
+
+Build with `flutter build apk --debug --dart-define=FREE_PLAN=true --target-platform android-arm64` and deploy only `firebase.free.json` to the intended Firebase project. Without the flag the original Cloud Functions version remains selected. Never deploy the original rules and free-plan client together: those rules intentionally disallow all direct writes.
+
+The free-plan edition implements anonymous profiles, live atomic laundry/sports reservations, owner-only completion, incorrect-status reports, English mess-menu reads and pending suggestions, chat/replies/deletion/reporting/muting and server-rule rate limits. It has no Cloud Functions, Cloud Tasks or scheduled notifications. The UI explicitly states that reminders are unavailable.
+
+Public availability documents do not contain UIDs. Private `resourceClaims` connect resources to owner sessions. A valid start atomically creates the private session, owner lock and resource claim and changes availability. Rules use `getAfter` to require the entire transaction. Completion must atomically close the owner's session, release the resource and remove its lock/claim. Client visibility is not an authorization mechanism. Alias claims prevent another account from taking an existing public chat identity. Local clock checks are convenience only: rules enforce trusted request times and limits.
+
+The existing administrator web app still requires the original Cloud Functions backend and is **not deployed for this edition**. A project administrator must currently review reports and edit official menus using trusted Firebase administrative tools. Students cannot approve suggestions, set restrictions, change official menus or override another owner's session. Moderation, approvals and administrative overrides through a free-plan dashboard are not implemented in this change. No report automatically changes occupancy or bans an account.
+
+This is a development APK, not a signed production release. Keep Firebase configuration, debugging tokens and signing keys out of Git. App Check's debug provider is for locally authorized test devices only; register its debug token and configure enforcement before a wider release. Free quotas still apply, and anonymous access does not prove hostel membership.
+
+Run free-plan security tests using the Firestore emulator with `TEST_FREE_PLAN=1` and `node --test functions/test/free-plan.test.cjs`. `firebase.free.json` configures the emulator on port 8082. Tests cover valid and malicious profile creation, public-alias theft, chat author/rate enforcement, simultaneous reservation races, ownership privacy, unauthorized completion, active-session lock bypass, sports ownership and report isolation.

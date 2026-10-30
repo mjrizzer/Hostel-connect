@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models.dart';
+import 'free_plan.dart';
 
 class Repository {
   Repository({FirebaseFirestore? firestore})
@@ -13,11 +14,13 @@ class Repository {
   FirebaseFunctions get functions =>
       FirebaseFunctions.instanceFor(region: 'asia-south1');
   bool get mutationsEnabled => true;
+  bool get supportsReminders => !freePlan;
   String get uid => auth.currentUser!.uid;
   Future<Map<String, dynamic>> call(
     String action, [
     Map<String, dynamic> payload = const {},
   ]) async {
+    if (freePlan) return freePlanCall(db, uid, action, payload);
     final result = await functions.httpsCallable('api').call<dynamic>({
       'action': action,
       'payload': payload,

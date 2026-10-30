@@ -149,6 +149,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       await repo.initialize();
       if (!mounted) return;
       context.go('/');
+      if (!repo.supportsReminders) return;
       try {
         await Notifications.instance.initialize(
           repo,

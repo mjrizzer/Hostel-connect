@@ -1,0 +1,173 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signed() { return request.auth != null; }
+  function me() { return request.auth.uid; }
+  function admin() { return signed() && request.auth.token.admin == true && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+  function owned() { return signed() && resource.data.sessionOwnerId == me(); }
+  function sessions(k) { return k == 'laundry' ? 'laundrySessions' : 'sportsSessions'; }
+  function resources(k) { return k == 'laundry' ? 'machines' : 'sportsEquipment'; }
+  function locks(k) { return k == 'laundry' ? 'activeLaundry' : 'activeSports'; }
+  function sessionPath(k,s) { return /databases/$(database)/documents/$(sessions(k))/$(s); }
+  function resourcePath(k,r) { return /databases/$(database)/documents/$(resources(k))/$(r); }
+  function claimPath(r) { return /databases/$(database)/documents/resourceClaims/$(r); }
+  function lockPath(k) { return /databases/$(database)/documents/$(locks(k))/$(me()); }
+  function validKind(k) { return k in ['laundry','sports']; }
+  function startResource(k,r) {
+    let n = request.resource.data;
+    let s = getAfter(sessionPath(k,n.activeSessionId)).data;
+    return resource.data.status == 'available' && n.status == 'inUse'
+      && n.startedAt == request.time && n.updatedAt == request.time
+      && !exists(sessionPath(k,n.activeSessionId)) && s.sessionOwnerId == me()
+      && s.resourceId == r && s.status == 'active'
+      && getAfter(claimPath(r)).data.sessionOwnerId == me();
+  }
+  function finishResource(k,r) {
+    let before = resource.data;
+    let n = request.resource.data;
+    return before.status == 'inUse' && n.status == 'available'
+      && n.activeSessionId == null && n.startedAt == null && n.updatedAt == request.time
+      && get(claimPath(r)).data.sessionOwnerId == me()
+      && getAfter(sessionPath(k,before.activeSessionId)).data.status == 'completed'
+      && !existsAfter(claimPath(r)) && !existsAfter(lockPath(k));
+  }
+  function changeResource(k,r) {
+    return signed() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','activeSessionId','startedAt','updatedAt'])
+      && (startResource(k,r) || finishResource(k,r));
+  }
+  function createSession(k,s) {
+    let n = request.resource.data;
+    return signed() && n.keys().hasOnly(['sessionOwnerId','resourceId','status','startedAt','completedAt'])
+      && n.sessionOwnerId == me() && n.status == 'active' && n.startedAt == request.time && n.completedAt == null
+      && get(resourcePath(k,n.resourceId)).data.status == 'available'
+      && getAfter(resourcePath(k,n.resourceId)).data.activeSessionId == s
+      && !exists(lockPath(k)) && getAfter(lockPath(k)).data.sessionId == s
+      && getAfter(claimPath(n.resourceId)).data.sessionOwnerId == me()
+      && getAfter(claimPath(n.resourceId)).data.sessionId == s;
+  }
+  function finishSession(k,s) {
+    return owned() && resource.data.status == 'active' && request.resource.data.status == 'completed'
+      && request.resource.data.completedAt == request.time
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt'])
+      && getAfter(resourcePath(k,resource.data.resourceId)).data.status == 'available'
+      && !existsAfter(lockPath(k)) && !existsAfter(claimPath(resource.data.resourceId));
+  }
+  match /buildings/{id} { allow read: if signed(); }
+  match /machines/{id} { allow read: if signed(); allow update: if changeResource('laundry',id); }
+  match /sportsEquipment/{id} { allow read: if signed(); allow update: if changeResource('sports',id); }
+  match /laundrySessions/{id} { allow read: if owned() || admin(); allow create: if createSession('laundry',id); allow update: if finishSession('laundry',id); }
+  match /sportsSessions/{id} { allow read: if owned() || admin(); allow create: if createSession('sports',id); allow update: if finishSession('sports',id); }
+  function createLock(k) {
+    let s = request.resource.data.sessionId;
+    return request.resource.data.keys().hasOnly(['sessionId']) && !exists(sessionPath(k,s))
+      && getAfter(sessionPath(k,s)).data.sessionOwnerId == me() && getAfter(sessionPath(k,s)).data.status == 'active';
+  }
+  match /activeLaundry/{uid} {
+    allow read: if signed() && uid == me();
+    allow create: if signed() && uid == me() && createLock('laundry');
+    allow delete: if signed() && uid == me() && getAfter(sessionPath('laundry',resource.data.sessionId)).data.status == 'completed';
+  }
+  match /activeSports/{uid} {
+    allow read: if signed() && uid == me();
+    allow create: if signed() && uid == me() && createLock('sports');
+    allow delete: if signed() && uid == me() && getAfter(sessionPath('sports',resource.data.sessionId)).data.status == 'completed';
+  }
+  match /resourceClaims/{id} {
+    allow read: if owned() || admin();
+    allow create: if signed() && request.resource.data.keys().hasOnly(['sessionOwnerId','sessionId','kind'])
+      && request.resource.data.sessionOwnerId == me() && validKind(request.resource.data.kind)
+      && getAfter(sessionPath(request.resource.data.kind,request.resource.data.sessionId)).data.resourceId == id
+      && getAfter(sessionPath(request.resource.data.kind,request.resource.data.sessionId)).data.sessionOwnerId == me()
+      && getAfter(resourcePath(request.resource.data.kind,id)).data.activeSessionId == request.resource.data.sessionId;
+    allow delete: if owned() && getAfter(sessionPath(resource.data.kind,resource.data.sessionId)).data.status == 'completed';
+  }
+  match /users/{uid} {
+    allow read: if signed() && (uid == me() || admin());
+    allow create: if signed() && uid == me() && request.resource.data.keys().hasOnly(['displayName','publicId','createdAt','lastActiveAt','reminders'])
+      && request.resource.data.displayName is string && request.resource.data.displayName.matches('[a-zA-Z0-9 _-]{2,32}')
+      && request.resource.data.publicId.matches('[a-f0-9-]{36}')
+      && !exists(/databases/$(database)/documents/publicAliases/$(request.resource.data.publicId))
+      && getAfter(/databases/$(database)/documents/publicAliases/$(request.resource.data.publicId)).data.owner == me()
+      && request.resource.data.createdAt == request.time && request.resource.data.lastActiveAt == request.time && request.resource.data.reminders == false;
+    allow update: if signed() && uid == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','lastActiveAt'])
+      && request.resource.data.displayName.matches('[a-zA-Z0-9 _-]{2,32}') && request.resource.data.lastActiveAt == request.time;
+  }
+  match /publicAliases/{alias} {
+    allow create: if signed() && request.resource.data.keys().hasOnly(['owner']) && request.resource.data.owner == me()
+      && !exists(/databases/$(database)/documents/users/$(me()))
+      && getAfter(/databases/$(database)/documents/users/$(me())).data.publicId == alias;
+  }
+  match /weeklyMenu/{day} { allow read: if signed(); }
+  match /menuOverrides/{id} { allow read: if signed(); }
+  match /dryingReminders/{id} { allow read: if owned(); }
+  function reportRate(target) {
+    let p = /databases/$(database)/documents/freeRateLimits/$(me()+'_reports');
+    return (!exists(p) || request.time >= get(p).data.at + duration.value(60,'s'))
+      && getAfter(p).data.at == request.time && getAfter(p).data.target == target;
+  }
+  function statusReport(k,id,col) {
+    let n = request.resource.data;
+    return signed() && n.keys().hasOnly(['kind','resourceId','reason','description','status','createdAt','reportedByUid'])
+      && n.kind == k && n.reportedByUid == me() && id == me()+'_'+n.resourceId
+      && exists(resourcePath(k,n.resourceId)) && n.status == 'pending' && n.createdAt == request.time
+      && n.reason in ['Machine is actually free','Machine is occupied but marked available','Machine is broken','Other problem']
+      && n.description is string && n.description.size() <= 1000 && reportRate(col+'/'+id);
+  }
+  match /machineReports/{id} { allow read: if admin(); allow create: if statusReport('laundry',id,'machineReports'); }
+  match /sportsReports/{id} { allow read: if admin(); allow create: if statusReport('sports',id,'sportsReports'); }
+  match /menuSuggestions/{id} {
+    allow read: if admin() || (signed() && resource.data.proposedBy == me());
+    allow create: if signed() && request.resource.data.keys().hasOnly(['date','mealType','items','reason','status','createdAt','proposedBy'])
+      && request.resource.data.proposedBy == me() && request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time
+      && request.resource.data.date.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}') && request.resource.data.mealType in ['breakfast','lunch','snacks','dinner']
+      && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 20
+      && request.resource.data.reason is string && request.resource.data.reason.size() <= 500 && reportRate('menuSuggestions/'+id);
+  }
+  function canChat() { return !exists(/databases/$(database)/documents/restrictions/$(me())) || get(/databases/$(database)/documents/restrictions/$(me())).data.until <= request.time; }
+  function chatRate(id,content) {
+    let p = /databases/$(database)/documents/freeRateLimits/$(me()+'_chat');
+    return (!exists(p) || (request.time >= get(p).data.at + duration.value(5,'s') && (content != get(p).data.content || request.time >= get(p).data.at + duration.value(60,'s'))))
+      && getAfter(p).data.at == request.time && getAfter(p).data.target == id && getAfter(p).data.content == content;
+  }
+  match /chatMessages/{id} {
+    allow read: if signed();
+    allow create: if signed() && canChat() && request.resource.data.keys().hasOnly(['content','displayName','senderKey','timestamp','replyTo','deleted','moderated'])
+      && request.resource.data.content is string && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 2000
+      && !request.resource.data.content.lower().matches('(?s).*(fuck|cunt|nigger).*')
+      && request.resource.data.displayName == get(/databases/$(database)/documents/users/$(me())).data.displayName
+      && request.resource.data.senderKey == get(/databases/$(database)/documents/users/$(me())).data.publicId
+      && request.resource.data.timestamp == request.time && request.resource.data.deleted == false && request.resource.data.moderated == false
+      && (request.resource.data.replyTo == null || exists(/databases/$(database)/documents/chatMessages/$(request.resource.data.replyTo)))
+      && getAfter(/databases/$(database)/documents/chatAuthors/$(id)).data.senderId == me() && chatRate(id,request.resource.data.content);
+    allow update: if signed() && get(/databases/$(database)/documents/chatAuthors/$(id)).data.senderId == me()
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content','deleted'])
+      && request.resource.data.content == 'Message deleted' && request.resource.data.deleted == true;
+  }
+  match /chatAuthors/{id} {
+    allow read: if admin();
+    allow create: if signed() && request.resource.data.keys().hasOnly(['senderId']) && request.resource.data.senderId == me()
+      && !exists(/databases/$(database)/documents/chatMessages/$(id)) && getAfter(/databases/$(database)/documents/chatMessages/$(id)).data.timestamp == request.time;
+  }
+  match /messageReports/{id} {
+    allow read: if admin();
+    allow create: if signed() && request.resource.data.keys().hasOnly(['messageId','reason','description','status','createdAt','reporterId'])
+      && request.resource.data.reporterId == me() && id == me()+'_'+request.resource.data.messageId
+      && exists(/databases/$(database)/documents/chatMessages/$(request.resource.data.messageId))
+      && request.resource.data.reason in ['Abusive language','Vulgar content','Harassment','Spam','Threats','Other']
+      && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+      && request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time && reportRate('messageReports/'+id);
+  }
+  match /freeRateLimits/{id} {
+    allow read: if signed() && id in [me()+'_chat',me()+'_reports'];
+    allow create,update: if signed() && id in [me()+'_chat',me()+'_reports'] && request.resource.data.at == request.time
+      && request.resource.data.keys().hasOnly(['at','target','content']) && request.resource.data.target is string
+      && (id == me()+'_chat'
+        ? getAfter(/databases/$(database)/documents/chatMessages/$(request.resource.data.target)).data.timestamp == request.time
+          && getAfter(/databases/$(database)/documents/chatMessages/$(request.resource.data.target)).data.content == request.resource.data.content
+          && getAfter(/databases/$(database)/documents/chatAuthors/$(request.resource.data.target)).data.senderId == me()
+        : request.resource.data.target.matches('(machineReports|sportsReports|messageReports|menuSuggestions)/[a-zA-Z0-9_-]+'))
+      && (!exists(/databases/$(database)/documents/freeRateLimits/$(id)) || request.time >= resource.data.at + duration.value(id == me()+'_chat' ? 5 : 60,'s'));
+  }
+  match /{document=**} { allow write: if false; }
+ }
+}
